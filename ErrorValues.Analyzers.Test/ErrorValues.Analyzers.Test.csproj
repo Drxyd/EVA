@@ -1,0 +1,46 @@
+﻿<Project Sdk="MSTest.Sdk/4.0.2">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<!--
+      Displays error on console in addition to the log file. Note that this feature comes with a performance impact.
+      For more information, visit https://learn.microsoft.com/dotnet/core/testing/unit-testing-platform-integration-dotnet-test#show-failure-per-test
+      -->
+		<TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis" Version="5.6.0" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.MSTest" Version="1.1.2" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing.MSTest" Version="1.1.2" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeRefactoring.Testing.MSTest" Version="1.1.2" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\ErrorValues.Analyzers\ErrorValues.Analyzers.csproj" />
+	  <ProjectReference Include="..\ErrorValues.CodeFixes\ErrorValues.CodeFixes.csproj" />
+	  <ProjectReference Include="..\ErrorValues.Library\ErrorValues.Library.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Microsoft.Testing-->
+		<PackageReference Update="Microsoft.Testing.Extensions.CodeCoverage" Version="18.9.0" />
+		<PackageReference Update="Microsoft.Testing.Extensions.TrxReport" Version="2.3.3" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--MSTest-->
+		<PackageReference Update="MSTest.Analyzers" Version="3.8.2">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>
+				runtime; build; native; contentfiles; analyzers; buildtransitive
+			</IncludeAssets>
+		</PackageReference>
+		<PackageReference Update="MSTest.TestAdapter" Version="4.3.3" />
+		<PackageReference Update="MSTest.TestFramework" Version="4.3.3" />
+	</ItemGroup>
+
+</Project>
