@@ -1,4 +1,4 @@
-# Fallible.EVA.SDK
+# EVA
 
 > **Status: V0 (Experimental Preview)**
 > *This SDK is currently in early preview and is not yet production-ready. V0 strictly enforces total resolution via `switch` statements and expressions.*
