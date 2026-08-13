@@ -103,7 +103,7 @@ public class CodeGeneratorA : IIncrementalGenerator
 
     public static string Generate(EnumModel model)
     {
-        string structName = $"R{model.TargetFunctionName}";
+        string structName = $"R{model.EnumName}";
 
         return 
         $"""

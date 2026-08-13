@@ -20,7 +20,7 @@ internal class Program
     //    Console.WriteLine(typeof(IEVA<>).GetCleanFullName());
     //}
     [ErrorValues(nameof(MyFun))]
-    public enum MyEnum : byte
+    public enum FunErr : byte
     {
         [Payload<int>(happy: true)]
         None = 1 << 0,
@@ -33,68 +33,42 @@ internal class Program
 
     public static IEVA<int> MyFun()
     {
-        return RMyFun<int>.None(3);
-    }
-
-    public static int Test()
-    {
-        return 0;
-    }
-
-    ref struct Struct : IStruc
-    {
-
-    }
-
-    interface IStruc { }
-
-    enum TestEnum
-    {
-        t1, t2, t3
+        return RFunErr<int>.None(3);
     }
 
     static void Main()
     {
-        IEVA<int> result = MyFun(); // Make it so that you only need to cast to the full type if IsSuccess == false
+        IEVA<int> result = MyFun(); 
+        // Make it so that you only need to cast to the full type if IsSuccess == false
         
         if (result.Happy) return;
 
-        RMyFun<int> error = (RMyFun<int>)result;
+        RFunErr<int> error = (RFunErr<int>)result;
 
-        MyEnum my_enum = (RMyFun<int>)error;
-
+        FunErr my_enum = (RFunErr<int>)error;
+        
         switch (my_enum)
         {
-            case MyEnum.None:
+            case FunErr.None:
                 {
                     var none = error.None();
                 }
                 break;
-            case MyEnum.One or MyEnum.Two:
+            case FunErr.One or FunErr.Two:
                 {
                     var one = error.One();
                     var two = error.Two();
                 }
                 break;
-            case MyEnum.Three: break;
+            case FunErr.Three: break;
         }
-
-        TestEnum t = TestEnum.t1;
-
-        switch (t)
+        
+        int my_num = my_enum switch 
         {
-            case TestEnum.t1:
-                break;
-            case TestEnum.t2 or TestEnum.t3:
-                break; 
-        }
-
-        int my_num = my_enum switch
-        {
-            MyEnum.None => error.None(),
-            MyEnum.One => error.One().Length,
-            MyEnum.Two => ((int)error.Two()),
-            MyEnum.Three => 2,
+            FunErr.None => error.None(),
+            FunErr.One => error.One().Length,
+            FunErr.Two => ((int)error.Two()),
+            FunErr.Three => 2,
             _ => 0
         };
 

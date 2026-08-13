@@ -105,7 +105,7 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
         if (target_method == null)
             return; // Error: method doesn't exist
 
-        string expected_return_type_name = $"R{method_name}";
+        string expected_return_type_name = $"R{enum_symbol.Name}";
         ITypeSymbol return_type = target_method.ReturnType;
 
         bool isWrapped = (return_type.Name == expected_return_type_name 
@@ -183,7 +183,6 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
         {
             bool has_called_accessor = invocations.Any(inv =>
                 inv.TargetMethod.Name == symbol.Name
-                //&& IsGeneratedResultStruct(inv.TargetMethod.ContainingType)
             );
 
             if (!has_called_accessor && VariantHasPayload(symbol))
@@ -239,7 +238,12 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
 
                 else if (clause is IRelationalCaseClauseOperation relation)
                 {
-                    var field_refs = relation.ChildOperations.Where(child => child is IFieldReferenceOperation field_reference && field_reference.Field.ContainingType?.Name == enum_type.Name);
+                    var field_refs = relation
+                        .Descendants()
+                        .Where(child => 
+                            child is IFieldReferenceOperation field_reference && 
+                            field_reference.Field.ContainingType?.Name == enum_type.Name)
+                        .Cast<IFieldReferenceOperation>();
 
                     foreach (IFieldReferenceOperation field_reference in field_refs)
                     {
@@ -250,7 +254,12 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
                 else if (clause is IPatternCaseClauseOperation pattern)
                 {
 
-                    var field_refs = pattern.Descendants().Where(child => child is IFieldReferenceOperation field_reference && field_reference.Field.ContainingType?.Name == enum_type.Name);
+                    var field_refs = pattern
+                        .Descendants()
+                        .Where(child => 
+                            child is IFieldReferenceOperation field_reference && 
+                            field_reference.Field.ContainingType?.Name == enum_type.Name)
+                        .Cast<IFieldReferenceOperation>(); ;
 
                     foreach (IFieldReferenceOperation field_reference in field_refs)
                     {
@@ -275,12 +284,11 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
         }
     }
 
-
     private void AnalyzeSwitchCase(OperationAnalysisContext context)
     {
         ISwitchCaseOperation switch_case = (ISwitchCaseOperation)context.Operation;
+        ISwitchOperation? switch_op = (ISwitchOperation?) switch_case.Parent;
 
-        ISwitchOperation? switch_op = (ISwitchOperation?)switch_case.Parent?.Parent;
         if (switch_op == null)
             return;
 
@@ -303,22 +311,29 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
 
         foreach (ICaseClauseOperation clause in switch_case.Clauses)
         {
-            string variant_name = GetVariantNameFromClause(clause);
+            var field_symbols = clause.Descendants()
+                .Where(descendant => 
+                    descendant is IFieldReferenceOperation)
+                .Select(field =>
+                    ((IFieldReferenceOperation)field).Field);
 
-            bool accessor_called = invocations.Where(inv =>
-                inv.TargetMethod.Name == variant_name
-            ).Count() > 0;
-
-            //OperationLog(context, $"clause variant: {variant_name}, \naccessor called: {accessor_called}, \nvariant has payload: {VariantHasPayload(clause)}");
-
-            if (VariantHasPayload(clause) && !accessor_called)
+            foreach(IFieldSymbol symbol in field_symbols)
             {
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        UnconsumedPayloadRule,
-                        switch_case.Syntax.GetLocation(),
-                        variant_name
-                ));
+                string variant_name = symbol.Name;
+
+                bool accessor_called = invocations.Where(inv =>
+                        inv.TargetMethod.Name == variant_name
+                    ).Count() > 0;
+
+                if (VariantHasPayload(symbol) && !accessor_called)
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            UnconsumedPayloadRule,
+                            switch_case.Syntax.GetLocation(),
+                            variant_name
+                    ));
+                }
             }
         }
     }
@@ -351,7 +366,7 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
 
     private static IEnumerable<IFieldSymbol> GetVariantFieldSymbolsFromPattern(IPatternOperation pattern)
     {
-        switch (pattern)
+        switch (pattern) // overcomplicated, just query descendants
         {
             // Match base
             case IConstantPatternOperation { Value: IFieldReferenceOperation fieldRef }:
@@ -371,31 +386,6 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private bool VariantHasPayload(ICaseClauseOperation clause)
-    {
-        IFieldSymbol? field_symbol = null;
-
-        if (clause is ISingleValueCaseClauseOperation { 
-            Value: IFieldReferenceOperation field_ref })
-        {
-            field_symbol = field_ref.Field;
-        }
-
-        else if (clause is IPatternCaseClauseOperation { 
-            Pattern: IConstantPatternOperation { 
-                Value: IFieldReferenceOperation pattern_field_ref }})
-        {
-            field_symbol = pattern_field_ref.Field;
-        }
-
-        if (field_symbol == null)
-            return false;
-        return field_symbol.GetAttributes().Any(attribute =>
-            attribute.AttributeClass?.IsGenericType == true
-            && attribute.AttributeClass.ConstructedFrom.MetadataName == typeof(PayloadAttribute<>).Name
-        );
-    }
-
     private bool VariantHasPayload(IFieldSymbol symbol)
     {
         return symbol.GetAttributes().Any(attribute =>
@@ -404,20 +394,11 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
         );
     }
 
-    private static string GetVariantNameFromClause(ICaseClauseOperation clause)
+    private static IEnumerable<string?> GetVariantNameFromClause(ICaseClauseOperation clause)
     {
-        if (clause is ISingleValueCaseClauseOperation single_value
-            && single_value.Value is IFieldReferenceOperation field_ref)
-        {
-            return field_ref.Field.Name;
-        }
-        if (clause is IPatternCaseClauseOperation pattern_clause
-            && pattern_clause.Pattern is IConstantPatternOperation constant_pattern
-            && constant_pattern.Value is IFieldReferenceOperation pattern_field_ref)
-        {
-            return pattern_field_ref.Field.Name;
-        }
-        throw new MissingMemberException("There exists a switch clause type that the analyzer isn't accounting for");
+        var field_names = clause.Descendants().Where(descendant => descendant is IFieldReferenceOperation).Select(field => 
+            ((IFieldReferenceOperation)field).Field.Name);
+        return field_names;
     }
 
     private INamedTypeSymbol? GetTargetEnumSymbol(ITypeSymbol type)
@@ -454,7 +435,7 @@ public partial class ErrorValuesAnalyzer
     title: "Analyzer Debug Log",
     messageFormat: "Internal Log: {0}",
     category: "Debug",
-    defaultSeverity: DiagnosticSeverity.Info,
+    defaultSeverity: DiagnosticSeverity.Warning,
     isEnabledByDefault: true);
 
     public void SymbolLog(SymbolAnalysisContext context, string message)
