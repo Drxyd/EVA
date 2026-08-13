@@ -12,51 +12,10 @@ using Microsoft.CodeAnalysis.Operations;
 
 namespace ErrorValues.Analyzers;
 
-/* TODO: 
- * 1. Refactor, repeated work in GetVariantNameFromClause and VariantHasPayload. See AnalyzeSwitchExpressionArm for example reduction. 
- * 2. Design control flow graph analysis pipeline.
- * 3. Add support for partial matching per matching construct whilst enforcing complete matching in function nody.
- * 4. Add support for exhaustive if-else blocks.
- * 5. Add support for disjoint if block matching.
- * 6. Add support for ternary expression matching.
- */
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class ErrorValuesAnalyzer : DiagnosticAnalyzer
+public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
 {
-    //// DEBUGGING
-    private static readonly DiagnosticDescriptor EVAInternalLogInfo = new(
-    id: "LOG001",
-    title: "Analyzer Debug Log",
-    messageFormat: "Internal Log: {0}",
-    category: "Debug",
-    defaultSeverity: DiagnosticSeverity.Warning, // Use Info, Hidden, or Warning
-    isEnabledByDefault: true);
-
-    public void SymbolLog(SymbolAnalysisContext context, string message)
-    {
-        Location location = context.Symbol.Locations.FirstOrDefault() ?? Location.None;
-        Diagnostic diagnostic = Diagnostic.Create(EVAInternalLogInfo, location, message);
-        context.ReportDiagnostic(diagnostic);
-    }
-
-    public void SymbolRaiseDiagnostic(SymbolAnalysisContext context, DiagnosticDescriptor descriptor, Location location, params string[] parameters)
-    {
-        Diagnostic diagnostic = Diagnostic.Create(descriptor, location, parameters);
-        context.ReportDiagnostic(diagnostic);
-    }
-
-    public void OperationLog(OperationAnalysisContext context, string message)
-    {
-        Location location = context.Operation.Syntax.GetLocation() ?? Location.None;
-        Diagnostic diagnostic = Diagnostic.Create(EVAInternalLogInfo, location, message);
-        context.ReportDiagnostic(diagnostic);
-    }
-    
-    // Additionally write logs to an analyzer debug log file
-    ////
-
-
     public static readonly DiagnosticDescriptor UnusedResultRule = new(
         id: "EVA0001",
         title: "Error result must be handled",
@@ -91,13 +50,14 @@ public class ErrorValuesAnalyzer : DiagnosticAnalyzer
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
     [
-        //// DEBUGGING
-        EVAInternalLogInfo,
-        ////
         UnusedResultRule, 
         IncompleteSwitchRule, 
         UnconsumedPayloadRule, 
         UnwrappedReturnRule,
+
+        //// DEBUGGING
+        EVAInternalLogInfo,
+        ////
     ];
 
     public override void Initialize(AnalysisContext context)
@@ -148,8 +108,8 @@ public class ErrorValuesAnalyzer : DiagnosticAnalyzer
         string expected_return_type_name = $"R{method_name}";
         ITypeSymbol return_type = target_method.ReturnType;
 
-        bool isWrapped = return_type.Name == expected_return_type_name 
-            && return_type.IsRefLikeType;
+        bool isWrapped = (return_type.Name == expected_return_type_name 
+            && return_type.IsRefLikeType) || return_type.Name == typeof(IEVA<>).GetCleanName();
 
         if (!isWrapped)
         {
@@ -223,7 +183,7 @@ public class ErrorValuesAnalyzer : DiagnosticAnalyzer
         {
             bool has_called_accessor = invocations.Any(inv =>
                 inv.TargetMethod.Name == symbol.Name
-                && IsGeneratedResultStruct(inv.TargetMethod.ContainingType)
+                //&& IsGeneratedResultStruct(inv.TargetMethod.ContainingType)
             );
 
             if (!has_called_accessor && VariantHasPayload(symbol))
@@ -250,6 +210,11 @@ public class ErrorValuesAnalyzer : DiagnosticAnalyzer
         if (enum_type is null)
             return;
 
+        var enum_attr = enum_type.GetAttributes().Where(attribute => attribute.AttributeClass?.Name == typeof(ErrorValuesAttribute).Name);
+
+        if (enum_attr.Count() == 0)
+            return;
+
         var enumVariants = enum_type.GetMembers()
             .OfType<IFieldSymbol>()
             .Where(f => !f.IsImplicitlyDeclared)
@@ -270,6 +235,27 @@ public class ErrorValuesAnalyzer : DiagnosticAnalyzer
                     && single_value.Value is IFieldReferenceOperation field_ref)
                 {
                     handled_variants.Add(field_ref.Field.Name);
+                }
+
+                else if (clause is IRelationalCaseClauseOperation relation)
+                {
+                    var field_refs = relation.ChildOperations.Where(child => child is IFieldReferenceOperation field_reference && field_reference.Field.ContainingType?.Name == enum_type.Name);
+
+                    foreach (IFieldReferenceOperation field_reference in field_refs)
+                    {
+                        handled_variants.Add(field_reference.Field.Name);
+                    }
+                }
+                
+                else if (clause is IPatternCaseClauseOperation pattern)
+                {
+
+                    var field_refs = pattern.Descendants().Where(child => child is IFieldReferenceOperation field_reference && field_reference.Field.ContainingType?.Name == enum_type.Name);
+
+                    foreach (IFieldReferenceOperation field_reference in field_refs)
+                    {
+                        handled_variants.Add(field_reference.Field.Name);
+                    }
                 }
             }
         }
@@ -294,28 +280,44 @@ public class ErrorValuesAnalyzer : DiagnosticAnalyzer
     {
         ISwitchCaseOperation switch_case = (ISwitchCaseOperation)context.Operation;
 
+        ISwitchOperation? switch_op = (ISwitchOperation?)switch_case.Parent?.Parent;
+        if (switch_op == null)
+            return;
+
+        ITypeSymbol? value_type = switch_op.Value.Type;
+        if (value_type is null)
+            return;
+
+        INamedTypeSymbol? enum_type = GetTargetEnumSymbol(value_type);
+        if (enum_type is null)
+            return;
+
+        var enum_attr = enum_type.GetAttributes().Where(attribute => attribute.AttributeClass?.Name == typeof(ErrorValuesAttribute).Name);
+
+        if (enum_attr.Count() == 0)
+            return;
+
         IEnumerable<IInvocationOperation> invocations = switch_case
             .Descendants()
             .OfType<IInvocationOperation>();
 
         foreach (ICaseClauseOperation clause in switch_case.Clauses)
         {
-            string? name = GetVariantNameFromClause(clause);
-            if (name == null)
-                continue;
+            string variant_name = GetVariantNameFromClause(clause);
 
-            bool has_called_accessor = invocations.Any(inv =>
-                inv.TargetMethod.Name == name 
-                && IsGeneratedResultStruct(inv.TargetMethod.ContainingType)
-            );
+            bool accessor_called = invocations.Where(inv =>
+                inv.TargetMethod.Name == variant_name
+            ).Count() > 0;
 
-            if(!has_called_accessor && VariantHasPayload(clause))
+            //OperationLog(context, $"clause variant: {variant_name}, \naccessor called: {accessor_called}, \nvariant has payload: {VariantHasPayload(clause)}");
+
+            if (VariantHasPayload(clause) && !accessor_called)
             {
                 context.ReportDiagnostic(
                     Diagnostic.Create(
                         UnconsumedPayloadRule,
                         switch_case.Syntax.GetLocation(),
-                        name
+                        variant_name
                 ));
             }
         }
@@ -326,6 +328,7 @@ public class ErrorValuesAnalyzer : DiagnosticAnalyzer
         var invocation = (IInvocationOperation)context.Operation;
 
         ITypeSymbol returnType = invocation.TargetMethod.ReturnType;
+        
         if (!IsGeneratedResultStruct(returnType))
             return;
 
@@ -401,7 +404,7 @@ public class ErrorValuesAnalyzer : DiagnosticAnalyzer
         );
     }
 
-    private static string? GetVariantNameFromClause(ICaseClauseOperation clause)
+    private static string GetVariantNameFromClause(ICaseClauseOperation clause)
     {
         if (clause is ISingleValueCaseClauseOperation single_value
             && single_value.Value is IFieldReferenceOperation field_ref)
@@ -414,7 +417,7 @@ public class ErrorValuesAnalyzer : DiagnosticAnalyzer
         {
             return pattern_field_ref.Field.Name;
         }
-        return null;
+        throw new MissingMemberException("There exists a switch clause type that the analyzer isn't accounting for");
     }
 
     private INamedTypeSymbol? GetTargetEnumSymbol(ITypeSymbol type)
@@ -426,6 +429,9 @@ public class ErrorValuesAnalyzer : DiagnosticAnalyzer
 
     private static bool IsGeneratedResultStruct(ITypeSymbol type)
     {
+        if (type.TypeKind == TypeKind.Interface && type.Name == typeof(IEVA<>).GetCleanName())
+            return true;
+
         if (!type.IsRefLikeType)
             return false;
 
@@ -437,4 +443,42 @@ public class ErrorValuesAnalyzer : DiagnosticAnalyzer
 
         return (attr_data != null);
     }
+}
+
+
+public partial class ErrorValuesAnalyzer
+{
+    //// DEBUGGING
+    private static readonly DiagnosticDescriptor EVAInternalLogInfo = new(
+    id: "LOG001",
+    title: "Analyzer Debug Log",
+    messageFormat: "Internal Log: {0}",
+    category: "Debug",
+    defaultSeverity: DiagnosticSeverity.Info,
+    isEnabledByDefault: true);
+
+    public void SymbolLog(SymbolAnalysisContext context, string message)
+    {
+        Location location = context.Symbol.Locations.FirstOrDefault() ?? Location.None;
+        Diagnostic diagnostic = Diagnostic.Create(EVAInternalLogInfo, location, message);
+        context.ReportDiagnostic(diagnostic);
+    }
+
+    public void SymbolRaiseDiagnostic(SymbolAnalysisContext context, DiagnosticDescriptor descriptor, Location location, params string[] parameters)
+    {
+        Diagnostic diagnostic = Diagnostic.Create(descriptor, location, parameters);
+        context.ReportDiagnostic(diagnostic);
+    }
+
+    public void OperationLog(OperationAnalysisContext context, string message)
+    {
+        Location location = context.Operation.Syntax.GetLocation() ?? Location.None;
+        Diagnostic diagnostic = Diagnostic.Create(EVAInternalLogInfo, location, message);
+        context.ReportDiagnostic(diagnostic);
+    }
+
+    // This should be its own project
+    // Additionally write logs to an analyzer debug log file
+    ////
+
 }

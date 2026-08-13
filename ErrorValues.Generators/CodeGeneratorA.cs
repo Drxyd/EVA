@@ -52,8 +52,6 @@ public class CodeGeneratorA : IIncrementalGenerator
             .Value?
             .ToString();
 
-        
-
         List<VariantModel> variants = []; 
 
         foreach(ISymbol member in enum_symbol.GetMembers())
@@ -70,16 +68,23 @@ public class CodeGeneratorA : IIncrementalGenerator
 
             string payload_type = null;
             bool has_payload = false;
+            bool is_happy = false;
             if(payload_attr is not null && payload_attr.AttributeClass!.TypeArguments.Length > 0)
             {
                 ITypeSymbol type_arg = payload_attr.AttributeClass!.TypeArguments[0];
+                bool happy_parsed = bool.TryParse(
+                    payload_attr
+                    .ConstructorArguments
+                    .FirstOrDefault()
+                    .Value?.ToString(), out bool happy);
 
                 // Format type for global emission
                 payload_type = type_arg.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 has_payload = true;
+                is_happy = happy_parsed ? happy : is_happy;
             }
 
-            variants.Add(new VariantModel(field.Name, payload_type, has_payload));
+            variants.Add(new VariantModel(field.Name, payload_type, has_payload, is_happy));
         }
 
         string full_enum_name = enum_symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -113,15 +118,19 @@ public class CodeGeneratorA : IIncrementalGenerator
         namespace {model.Namespace};
 
         [Generation(nameof({model.FullyQualifiedEnumName}))]
-        internal readonly ref struct {structName}<T>
+        internal readonly struct {structName}<T> : {typeof(IEVA<>).GetCleanName()}<T>
         {OB}
             private readonly {model.FullyQualifiedEnumName} Tag;
             private readonly Storage _storage;
+            private readonly bool _happy;
 
-            internal {structName}({model.FullyQualifiedEnumName} tag, Storage storage)
+            public bool Happy {OB} get => _happy; {CB}
+
+            internal {structName}({model.FullyQualifiedEnumName} tag, Storage storage, bool happy = false)
             {OB}
                 Tag = tag;
                 _storage = storage;
+                _happy = happy;
             {CB}
 
             public static implicit operator {model.FullyQualifiedEnumName}({structName}<T> result)
@@ -164,7 +173,7 @@ public class CodeGeneratorA : IIncrementalGenerator
                     internal static {structName}<T> {v.Name}({v.PayloadTypeFullyQualified} payload)
                     {OB}
                         var storage = new Storage {OB} {v.Name} = payload {CB};
-                        return new {structName}<T>({model.FullyQualifiedEnumName}.{v.Name}, storage);
+                        return new {structName}<T>({model.FullyQualifiedEnumName}.{v.Name}, storage, {v.Happy.ToString().ToLower()});
                     {CB}
 
                 """);
@@ -176,7 +185,7 @@ public class CodeGeneratorA : IIncrementalGenerator
                     [MethodImpl(MethodImplOptions.AggressiveInlining)]
                     internal static {structName}<T> {v.Name}()
                     {OB}
-                        return new {structName}<T>({model.FullyQualifiedEnumName}.{v.Name}, default);
+                        return new {structName}<T>({model.FullyQualifiedEnumName}.{v.Name}, default, {v.Happy.ToString().ToLower()});
                     {CB}
 
                 """);
@@ -222,7 +231,7 @@ public class CodeGeneratorA : IIncrementalGenerator
         return 
         $"""
         [StructLayout(LayoutKind.Sequential)]
-            internal ref struct Storage
+            internal struct Storage
             {OB}
                 {StringFormatLines(
                     lines: fields, 
@@ -259,7 +268,8 @@ public class CodeGeneratorA : IIncrementalGenerator
 public record struct VariantModel(
     string Name,
     string PayloadTypeFullyQualified,
-    bool HasPayload);
+    bool HasPayload,
+    bool Happy);
 
 public record struct EnumModel(
     string Namespace,
