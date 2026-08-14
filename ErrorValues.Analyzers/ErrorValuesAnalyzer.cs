@@ -4,11 +4,16 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using ErrorValues.Attributes;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
+
+using ErrorValues.Attributes;
+using ErrorValues.Internal;
+using ErrorValues.Internal.Attributes;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace ErrorValues.Analyzers;
 
@@ -48,12 +53,21 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor CannotImplementIEVA = new(
+        id: "EVA0005",
+        title: "The interface IEVA<T> cannot be implemented",
+        messageFormat: "Detected attempt to implement IEVA<T>, this is not allowed as it risks violating EVA's error tracking assumptions",
+        category: "Reliability",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
     [
         UnusedResultRule, 
         IncompleteSwitchRule, 
         UnconsumedPayloadRule, 
         UnwrappedReturnRule,
+        CannotImplementIEVA,
 
         //// DEBUGGING
         EVAInternalLogInfo,
@@ -67,12 +81,41 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
             GeneratedCodeAnalysisFlags.ReportDiagnostics);
         context.EnableConcurrentExecution();
 
+        context.RegisterSyntaxNodeAction(context => AnalyzeBaseType(context),
+            SyntaxKind.ClassDeclaration,
+            SyntaxKind.StructDeclaration,
+            SyntaxKind.RecordDeclaration);
+
+        context.RegisterSymbolAction(AnalyzeEnumSymbol, SymbolKind.NamedType);
+
         context.RegisterOperationAction(AnalyzeInvocation, OperationKind.Invocation);
         context.RegisterOperationAction(AnalyzeSwitch, OperationKind.Switch);
         context.RegisterOperationAction(AnalyzeSwitchCase, OperationKind.SwitchCase);
         context.RegisterOperationAction(AnalyzeSwitchExpression, OperationKind.SwitchExpression);
         context.RegisterOperationAction(AnalyzeSwitchExpressionArm, OperationKind.SwitchExpressionArm);
-        context.RegisterSymbolAction(AnalyzeEnumSymbol, SymbolKind.NamedType);
+    }
+
+    private void AnalyzeBaseType(SyntaxNodeAnalysisContext context)
+    {
+        var syntax_node = context.Node;
+        var type_symbol = context.SemanticModel.GetDeclaredSymbol(syntax_node) as INamedTypeSymbol;
+        if (type_symbol == null)
+            return;
+        
+
+        foreach (var interface_symbol in type_symbol.AllInterfaces)
+        {
+            var trigger = interface_symbol.GetAttributes().Where(attribute =>
+                attribute.AttributeClass?.ContainingNamespace.Name == "ErrorValues.Internal");
+            if (trigger.Count() == 0)
+                continue;
+
+            SyntaxNodeLog(context, syntax_node.GetText().ToString());
+            context.ReportDiagnostic(Diagnostic.Create(
+                CannotImplementIEVA,
+                syntax_node.GetLocation()
+            ));
+        }
     }
 
     private void AnalyzeEnumSymbol(SymbolAnalysisContext context)
@@ -437,6 +480,12 @@ public partial class ErrorValuesAnalyzer
     category: "Debug",
     defaultSeverity: DiagnosticSeverity.Warning,
     isEnabledByDefault: true);
+
+    private void SyntaxNodeLog(SyntaxNodeAnalysisContext context, string v)
+    {
+        Location location = context.Node.GetLocation();
+        Diagnostic diagnostic = Diagnostic.Create(EVAInternalLogInfo, location, v);
+    }
 
     public void SymbolLog(SymbolAnalysisContext context, string message)
     {

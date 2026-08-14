@@ -22,6 +22,7 @@
 
 	<ItemGroup>
 		<!-- 1. Normal runtime reference for attributes and types -->
+		<ProjectReference Include="..\ErrorValues.Internal\ErrorValues.Internal.csproj" />
 		<ProjectReference Include="..\ErrorValues.Library\ErrorValues.Library.csproj" />
 
 		<!-- 2. Tell MSBuild to execute these projects inside the Roslyn compiler pipeline -->

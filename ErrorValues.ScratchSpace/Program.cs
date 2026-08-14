@@ -12,7 +12,7 @@ namespace ErrorValues.ScratchSpace;
  * 6. Add support for ternary expression matching.
  */
 
-internal class Program
+internal class Program 
 {
     //public static void Main()
     //{
@@ -74,4 +74,9 @@ internal class Program
 
         Console.WriteLine($"{error.None()}");
     }
+}
+
+class Test : IEVA<int>
+{
+    public bool Happy => throw new NotImplementedException();
 }

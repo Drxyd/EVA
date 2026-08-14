@@ -30,6 +30,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\ErrorValues.Internal\ErrorValues.Internal.csproj" />
 	  <ProjectReference Include="..\ErrorValues.Library\ErrorValues.Library.csproj" />
 	</ItemGroup>
 

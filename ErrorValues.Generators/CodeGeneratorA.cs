@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 using ErrorValues.Attributes;
 
+
 namespace ErrorValues.Generators;
 
 
@@ -114,6 +115,8 @@ public class CodeGeneratorA : IIncrementalGenerator
         using System.Runtime.InteropServices;
 
         using ErrorValues.Attributes;
+        using ErrorValues.Internal;
+        using ErrorValues.Internal.Attributes;
 
         namespace {model.Namespace};
 
@@ -309,4 +312,21 @@ public readonly struct EquatableArray<T>(T[] array) : IEquatable<EquatableArray<
 
     IEnumerator IEnumerable.GetEnumerator() 
         => GetEnumerator();
+}
+
+public static class TypeExtensions
+{
+    public static string GetCleanName(this Type type)
+    {
+        string name = type.Name;
+        int index = name.IndexOf('`');
+        return index > 0 ? name.Substring(0, index) : name;
+    }
+
+    public static string GetCleanFullName(this Type type)
+    {
+        string name = type.FullName;
+        int index = name.IndexOf('`');
+        return index > 0 ? name.Substring(0, index) : name;
+    }
 }

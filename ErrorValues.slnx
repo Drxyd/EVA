@@ -5,6 +5,7 @@
   <Project Path="ErrorValues.CodeFixes/ErrorValues.CodeFixes.csproj" />
   <Project Path="ErrorValues.Generators.Test/ErrorValues.Generators.Test.csproj" />
   <Project Path="ErrorValues.Generators/ErrorValues.Generators.csproj" />
+  <Project Path="ErrorValues.Internal/ErrorValues.Internal.csproj" Id="20dc0eca-c4a3-44b5-ba4e-70f8b155793b" />
   <Project Path="ErrorValues.Library/ErrorValues.Library.csproj" />
   <Project Path="ErrorValues.Package/ErrorValues.Package.csproj" />
   <Project Path="ErrorValues.ScratchSpace/ErrorValues.ScratchSpace.csproj" />
