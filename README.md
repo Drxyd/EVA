@@ -55,9 +55,9 @@ Applied to generated structs only. Marks them for analyzer recognition. Do not u
 
 | ID | Severity | Description |
 |----|----------|-------------|
-| `EVA0001` | Error | Result of a method returning a generated ref struct must be used. Cannot be silently discarded. |
-| `EVA0002` | Error | Switch statement or expression does not handle all enum variants. |
-| `EVA0003` | Error | Switch case for a payload-carrying variant does not invoke the payload accessor. |
+| `EVA0001` | Warning | Result of a method returning a generated ref struct must be used. Cannot be silently discarded. |
+| `EVA0002` | Warning | Switch statement or expression does not handle all enum variants. |
+| `EVA0003` | Warning | Switch case for a payload-carrying variant does not invoke the payload accessor. |
 | `EVA0004` | Warning | Method referenced by `[ErrorValues]` does not return the generated result struct. |
 
 ## Generated Code Shape
