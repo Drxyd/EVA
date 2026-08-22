@@ -21,7 +21,7 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
         title: "Error result must be handled",
         messageFormat: "The return value of '{0}' returns a ref struct result and must be assigned or checked",
         category: "Reliability",
-        defaultSeverity: DiagnosticSeverity.Error,
+        defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
     public static readonly DiagnosticDescriptor IncompleteSwitchRule = new(
@@ -29,7 +29,7 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
         title: "Incomplete error handling switch",
         messageFormat: "Switch statement on '{0}' does not handle variant '{1}'",
         category: "Reliability",
-        defaultSeverity: DiagnosticSeverity.Error,
+        defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
     public static readonly DiagnosticDescriptor UnconsumedPayloadRule = new(
@@ -37,7 +37,7 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
         title: "Error payload not consumed",
         messageFormat: "Switch case does not access variant '{0}'",
         category: "Reliability",
-        defaultSeverity: DiagnosticSeverity.Error,
+        defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
     public static readonly DiagnosticDescriptor UnwrappedReturnRule = new(
