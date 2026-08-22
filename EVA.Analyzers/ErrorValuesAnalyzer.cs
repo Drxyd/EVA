@@ -4,13 +4,13 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using ErrorValues.Attributes;
+using EVA.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
-namespace ErrorValues.Analyzers;
+namespace EVA.Analyzers;
 
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -83,7 +83,7 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
 
         AttributeData? error_state_attribute = enum_symbol.GetAttributes()
             .FirstOrDefault(attribute =>
-            attribute.AttributeClass?.ToDisplayString() == typeof(ErrorValuesAttribute).FullName);
+            attribute.AttributeClass?.ToDisplayString() == typeof(EVAAttribute).FullName);
 
         if (error_state_attribute == null 
             || error_state_attribute.ConstructorArguments.IsEmpty)
@@ -209,7 +209,7 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
         if (enum_type is null)
             return;
 
-        var enum_attr = enum_type.GetAttributes().Where(attribute => attribute.AttributeClass?.Name == typeof(ErrorValuesAttribute).Name);
+        var enum_attr = enum_type.GetAttributes().Where(attribute => attribute.AttributeClass?.Name == typeof(EVAAttribute).Name);
 
         if (enum_attr.Count() == 0)
             return;
@@ -300,7 +300,7 @@ public partial class ErrorValuesAnalyzer : DiagnosticAnalyzer
         if (enum_type is null)
             return;
 
-        var enum_attr = enum_type.GetAttributes().Where(attribute => attribute.AttributeClass?.Name == typeof(ErrorValuesAttribute).Name);
+        var enum_attr = enum_type.GetAttributes().Where(attribute => attribute.AttributeClass?.Name == typeof(EVAAttribute).Name);
 
         if (enum_attr.Count() == 0)
             return;

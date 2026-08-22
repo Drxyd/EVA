@@ -20,9 +20,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\ErrorValues.Analyzers\ErrorValues.Analyzers.csproj" />
-	  <ProjectReference Include="..\ErrorValues.CodeFixes\ErrorValues.CodeFixes.csproj" />
-	  <ProjectReference Include="..\ErrorValues.Library\ErrorValues.Library.csproj" />
+	  <ProjectReference Include="..\EVA.Analyzers\EVA.Analyzers.csproj" />
+	  <ProjectReference Include="..\EVA.CodeFixes\EVA.CodeFixes.csproj" />
+	  <ProjectReference Include="..\EVA.Library\EVA.Library.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -5,4 +5,10 @@
 		<LangVersion>latest</LangVersion>
 	</PropertyGroup>
 
+	<ItemGroup>
+		<None Include="$(OutputPath)$(AssemblyName).dll"
+			  Pack="true"
+			  PackagePath="lib/netstandard2.0" />
+	</ItemGroup>
+
 </Project>

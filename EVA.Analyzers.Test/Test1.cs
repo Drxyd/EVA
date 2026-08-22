@@ -1,5 +1,5 @@
 ﻿
-namespace ErrorValues.Analyzers.Test;
+namespace EVA.Analyzers.Test;
 
 [TestClass]
 public sealed class Test1

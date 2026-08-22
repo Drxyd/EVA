@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 
-namespace ErrorValues.Workspaces;
+namespace EVA.Workspaces;
 
 public class WorkspaceManager : IDisposable
 {

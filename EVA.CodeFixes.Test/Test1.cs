@@ -1,4 +1,4 @@
-﻿namespace ErrorValues.CodeFixes.Test
+﻿namespace EVA.CodeFixes.Test
 {
     [TestClass]
     public sealed class Test1

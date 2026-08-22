@@ -7,10 +7,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="RMyFun.g.cs" />
-  </ItemGroup>
-
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.6.0">
             <PrivateAssets>all</PrivateAssets>
@@ -22,12 +18,12 @@
 
 	<ItemGroup>
 		<!-- 1. Normal runtime reference for attributes and types -->
-		<ProjectReference Include="..\ErrorValues.Library\ErrorValues.Library.csproj" />
+		<ProjectReference Include="..\EVA.Library\EVA.Library.csproj" />
 
 		<!-- 2. Tell MSBuild to execute these projects inside the Roslyn compiler pipeline -->
-		<ProjectReference Include="..\ErrorValues.Library\ErrorValues.Library.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-		<ProjectReference Include="..\ErrorValues.Generators\ErrorValues.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-		<ProjectReference Include="..\ErrorValues.Analyzers\ErrorValues.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\EVA.Library\EVA.Library.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\EVA.Generators\EVA.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\EVA.Analyzers\EVA.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 	

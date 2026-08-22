@@ -1,7 +1,6 @@
-﻿using System.Collections;
-using ErrorValues.Attributes;
+﻿using EVA.Attributes;
 
-namespace ErrorValues.ScratchSpace;
+namespace EVA.ScratchSpace;
 
 /* Analyzers TODO: 
  * 1. Refactor, repeated work in GetVariantNameFromClause and VariantHasPayload. See AnalyzeSwitchExpressionArm for example reduction. 
@@ -19,8 +18,8 @@ internal class Program
     //    Console.WriteLine(typeof(IEVA<>).GetCleanName());
     //    Console.WriteLine(typeof(IEVA<>).GetCleanFullName());
     //}
-    [ErrorValues(nameof(MyFun))]
-    public enum FunErr : byte
+    [EVA(nameof(MyFun))]
+    public enum MyFunV : byte
     {
         [Payload<int>(happy: true)]
         None = 1 << 0,
@@ -33,7 +32,7 @@ internal class Program
 
     public static IEVA<int> MyFun()
     {
-        return RFunErr<int>.None(3);
+        return MyFunR<int>.None(3);
     }
 
     static void Main()
@@ -43,32 +42,32 @@ internal class Program
         
         if (result.Happy) return;
 
-        RFunErr<int> error = (RFunErr<int>)result;
+        MyFunR<int> error = (MyFunR<int>)result;
 
-        FunErr my_enum = (RFunErr<int>)error;
+        MyFunV my_enum = (MyFunR<int>)error;
         
         switch (my_enum)
         {
-            case FunErr.None:
+            case MyFunV.None:
                 {
                     var none = error.None();
                 }
                 break;
-            case FunErr.One or FunErr.Two:
+            case MyFunV.One or MyFunV.Two:
                 {
                     var one = error.One();
                     var two = error.Two();
                 }
                 break;
-            case FunErr.Three: break;
+            case MyFunV.Three: break;
         }
         
         int my_num = my_enum switch 
         {
-            FunErr.None => error.None(),
-            FunErr.One => error.One().Length,
-            FunErr.Two => ((int)error.Two()),
-            FunErr.Three => 2,
+            MyFunV.None => error.None(),
+            MyFunV.One => error.One().Length,
+            MyFunV.Two => ((int)error.Two()),
+            MyFunV.Three => 2,
             _ => 0
         };
 

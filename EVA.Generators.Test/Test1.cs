@@ -1,4 +1,4 @@
-﻿namespace ErrorValues.Generators.Test;
+﻿namespace EVA.Generators.Test;
 
 [TestClass]
 public sealed class Test1

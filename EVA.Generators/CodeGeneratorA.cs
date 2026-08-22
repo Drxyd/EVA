@@ -3,13 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-using ErrorValues.Attributes;
+using EVA.Attributes;
 
-namespace ErrorValues.Generators;
+namespace EVA.Generators;
 
 
 [Generator(LanguageNames.CSharp)]
@@ -19,7 +19,7 @@ public class CodeGeneratorA : IIncrementalGenerator
     {
         IncrementalValuesProvider<EnumModel?> enumModels = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                typeof(ErrorValuesAttribute).FullName,
+                typeof(EVAAttribute).FullName,
                 predicate: static (node, _) => node is EnumDeclarationSyntax,
                 transform: static (ctx, ct) => ExtractEnumMetadata(ctx))
             .Where(static m => m is not null);
@@ -42,10 +42,10 @@ public class CodeGeneratorA : IIncrementalGenerator
             .FirstOrDefault(
                 attribute => 
                     attribute.AttributeClass?
-                    .ToDisplayString() == typeof(ErrorValuesAttribute).FullName
+                    .ToDisplayString() == typeof(EVAAttribute).FullName
             );
         
-
+        
         string target_function_name =  error_vals_attr?
             .ConstructorArguments
             .FirstOrDefault()
@@ -103,7 +103,8 @@ public class CodeGeneratorA : IIncrementalGenerator
 
     public static string Generate(EnumModel model)
     {
-        string structName = $"R{model.EnumName}";
+        string rawName = model.EnumName.Substring(0, model.EnumName.Length - 1);
+        string structName = $"{model.EnumName.Substring(0, model.EnumName.Length - 1)}R";
 
         return 
         $"""
@@ -113,7 +114,7 @@ public class CodeGeneratorA : IIncrementalGenerator
         using System.Runtime.CompilerServices;
         using System.Runtime.InteropServices;
 
-        using ErrorValues.Attributes;
+        using {nameof(EVA)}.{nameof(EVA.Attributes)};
 
         namespace {model.Namespace};
 
@@ -136,28 +137,47 @@ public class CodeGeneratorA : IIncrementalGenerator
             public static implicit operator {model.FullyQualifiedEnumName}({structName}<T> result)
                 => result.Tag;
 
+            public {rawName}Exception ToException()
+            {OB}
+                switch(Tag)
+                {OB}
+                    {GenerateCases(model)}
+                {CB}
+                return new {rawName}Exception();
+            {CB}
+
             {GenerateTryAccessors(model)}
 
             {GenerateFactoryMethods(structName, model)}
             {GeneratePayloadMethods(model)}
             {GenerateStorageStruct(model)}
         {CB}
+
+
+        [Generation(nameof({model.FullyQualifiedEnumName}))]
+        internal class {rawName}Exception : Exception {OB}{CB}
+
+        {GenerateExceptions(rawName, model)}
         """;
     }
 
     private static string GenerateTryAccessors(EnumModel model)
     {
-        StringBuilder builder = new();
+        List<string> accessors = [];
         foreach (VariantModel v in model.Variants)
         {
-            builder.AppendLine(
+            accessors.Add(
                 $"""
-                public bool Is{v.Name}
-                    => {model.FullyQualifiedEnumName}.{v.Name} == Tag;
+                public bool Is{v.Name} => {model.FullyQualifiedEnumName}.{v.Name} == Tag;
                 """
             );
         }
-        return builder.ToString();
+        return StringFormatLines(
+            lines: accessors,
+            prefix: "",
+            line_separator: ("", new string(' ', 4)),
+            postfix: ""
+        );
     }
 
     private static string GenerateFactoryMethods(string structName, EnumModel model)
@@ -236,10 +256,87 @@ public class CodeGeneratorA : IIncrementalGenerator
                 {StringFormatLines(
                     lines: fields, 
                     prefix: "", 
-                    line_separator: ("", "        "),
+                    line_separator: ("", new string(' ', 8)),
                     postfix: "")}
             {CB}
         """;
+    }
+
+    private static string GenerateExceptions(string raw_name, EnumModel model)
+    {
+        StringBuilder str = new();
+        foreach (VariantModel v in model.Variants)
+        {
+            if(!v.Happy)
+            {
+                if (v.HasPayload)
+                {
+                    str.Append(
+                        $"""
+                        [{nameof(GenerationAttribute)}(nameof({model.FullyQualifiedEnumName}))]
+                        internal class {v.Name}Exception : {raw_name}Exception
+                        {OB}
+                            internal {v.PayloadTypeFullyQualified} Payload;
+                            internal {v.Name}Exception({v.PayloadTypeFullyQualified} payload)
+                            {OB}
+                                Payload = payload;
+                            {CB}
+                        {CB}
+
+                        """);
+                    str.AppendLine("");
+                }
+                else
+                {
+                    str.Append(
+                        $"""
+                        [{nameof(GenerationAttribute)}(nameof({model.FullyQualifiedEnumName}))]
+                        internal class {v.Name}Exception : {raw_name}Exception
+                        {OB}
+                    
+                        {CB}
+
+                        """);
+                    str.AppendLine("");
+                }
+            }
+        }
+        return str.ToString();
+    }
+
+    private static object GenerateCases(EnumModel model)
+    {
+        List<string> cases = [];
+        foreach(VariantModel v in model.Variants)
+        {
+            if(!v.Happy)
+            {
+                if (v.HasPayload)
+                {
+                    cases.Add(
+                        $"""
+                        case {model.FullyQualifiedEnumName}.{v.Name}: 
+                        {new string(' ', 16)}return new {v.Name}Exception(_storage.{v.Name});
+                        """
+                    );
+                }
+                else
+                {
+                    cases.Add(
+                        $"""
+                        case {model.FullyQualifiedEnumName}.{v.Name}: 
+                        {new string(' ', 16)}return new {v.Name}Exception();
+                        """
+                    );
+                }               
+            }
+        }
+        return StringFormatLines(
+            lines: cases,
+            prefix: "",
+            line_separator: ("", new string(' ', 12)),
+            postfix: ""
+        );
     }
 
     private static string StringFormatLines(List<string> lines, string prefix, (string end, string start) line_separator, string postfix)

@@ -1,11 +1,11 @@
 ﻿using System;
 
-namespace ErrorValues.Attributes;
+namespace EVA.Attributes;
 
 [AttributeUsage(AttributeTargets.Enum)]
-public class ErrorValuesAttribute : Attribute 
+public class EVAAttribute : Attribute 
 {
-    public ErrorValuesAttribute(string name) { }
+    public EVAAttribute(string name) { }
 }
 
 [AttributeUsage(AttributeTargets.Field)]
@@ -16,7 +16,7 @@ public class PayloadAttribute<T> : Attribute
     }
 }
 
-[AttributeUsage(AttributeTargets.Struct)]
+[AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class, AllowMultiple = true)]
 public class GenerationAttribute : Attribute 
 { 
     public GenerationAttribute(string enum_name) { }

@@ -1,0 +1,13 @@
+<Solution>
+  <Project Path="EVA.Analyzers.Test/EVA.Analyzers.Test.csproj" />
+  <Project Path="EVA.Analyzers/EVA.Analyzers.csproj" />
+  <Project Path="EVA.CodeFixes.Test/EVA.CodeFixes.Test.csproj" />
+  <Project Path="EVA.CodeFixes/EVA.CodeFixes.csproj" />
+  <Project Path="EVA.Generators.Test/EVA.Generators.Test.csproj" />
+  <Project Path="EVA.Generators/EVA.Generators.csproj" />
+  <Project Path="EVA.Library/EVA.Library.csproj" />
+  <Project Path="EVA.Package/EVA.Package.csproj" />
+  <Project Path="EVA.PackageTesting/EVA.PackageTesting.csproj" Id="8fb11bf5-7fc3-4999-8cd5-f7b33b002527" />
+  <Project Path="EVA.ScratchSpace/EVA.ScratchSpace.csproj" />
+  <Project Path="EVA.Workspaces/EVA.Workspaces.csproj" />
+</Solution>
