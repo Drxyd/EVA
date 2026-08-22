@@ -7,9 +7,9 @@
 
 | Id | Category | Severity | IsEnabledByDefault |
 | --- | --- | --- | --- |
-| EVA0001 | Reliability | Error | True |
-| EVA0002 | Reliability | Error | True |
-| EVA0003 | Reliability | Error | True |
-| EVA0004 | Reliability | Error | True |
-| EVA0005 | Reliability | Error | True |
+| EVA0001 | Reliability | Warning | True |
+| EVA0002 | Reliability | Warning | True |
+| EVA0003 | Reliability | Warning | True |
+| EVA0004 | Reliability | Warning | True |
+| EVA0005 | Reliability | Warning | True |
 | LOG001 | Debug | Warning | True |
